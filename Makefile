@@ -1,9 +1,9 @@
 
 THORSANVIL_ROOT				= $(realpath ./)
 
-TARGET						= Serialize.app
+TARGET						= src
 
-include $(THORSANVIL_ROOT)/build/tools/Makefile
+include $(THORSANVIL_ROOT)/build/tools/Project.Makefile
 
 
 
