@@ -826,6 +826,20 @@ class SerializerForBlock<TraitType::Pointer, T>
         }
 };
 template<typename T>
+struct GetRefValue;
+
+template<typename T>
+struct GetRefValue<std::reference_wrapper<T>>
+{
+    static T const& getValue(std::reference_wrapper<T> const& input) {return input.get();}
+};
+template<typename T>
+struct GetRefValue<std::optional<T>>
+{
+    static T const& getValue(std::optional<T> const& input) {return input.value();}
+};
+
+template<typename T>
 class SerializerForBlock<TraitType::Reference, T>
 {
     Serializer&         parent;
@@ -841,7 +855,7 @@ class SerializerForBlock<TraitType::Reference, T>
         void printMembers()
         {
             using RefType = typename Traits<std::remove_cv_t<T>>::RefType;
-            SerializerForBlock<Traits<std::remove_cv_t<RefType>>::type, RefType>        serializer(parent, printer, object.get());
+            SerializerForBlock<Traits<std::remove_cv_t<RefType>>::type, RefType>        serializer(parent, printer, GetRefValue<T>::getValue(object));
             serializer.printMembers();
         }
 };
@@ -899,7 +913,7 @@ class SerializerForBlock<TraitType::Array, T>
 template<typename T, typename M>
 SerializeMemberContainer<T, M>::SerializeMemberContainer(Serializer&, PrinterInterface& printer, T const& object, std::pair<char const*, M T::*> const& memberInfo)
 {
-    if (ThorsAnvil::Serialize::Filter<T>::filter(object, memberInfo.first))
+    if (ThorsAnvil::Serialize::Filter<T>::filter(object, memberInfo.first, object.*(memberInfo.second)))
     {
         printer.addKey(ThorsAnvil::Serialize::Override<T>::nameOverride(memberInfo.first));
 
@@ -911,7 +925,7 @@ SerializeMemberContainer<T, M>::SerializeMemberContainer(Serializer&, PrinterInt
 template<typename T, typename M>
 SerializeMemberContainer<T, M>::SerializeMemberContainer(Serializer&, PrinterInterface& printer, T const& object, std::pair<char const*, M*> const& memberInfo)
 {
-    if (ThorsAnvil::Serialize::Filter<T>::filter(object, memberInfo.first))
+    if (ThorsAnvil::Serialize::Filter<T>::filter(object, memberInfo.first, *(memberInfo.second)))
     {
         printer.addKey(ThorsAnvil::Serialize::Override<T>::nameOverride(memberInfo.first));
 
@@ -935,7 +949,7 @@ SerializeMemberValue<T, M, Type>::SerializeMemberValue(Serializer& parent, Print
 template<typename T, typename M, TraitType Type>
 void SerializeMemberValue<T, M, Type>::init(Serializer& parent, PrinterInterface& printer, char const* member, T const& object, M const& value)
 {
-    if (ThorsAnvil::Serialize::Filter<T>::filter(object, member))
+    if (ThorsAnvil::Serialize::Filter<T>::filter(object, member, value))
     {
         printer.addKey(ThorsAnvil::Serialize::Override<T>::nameOverride(member));
         SerializerForBlock<Type, M>  serializer(parent, printer, value);
