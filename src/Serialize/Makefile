@@ -11,6 +11,7 @@ LINK_LIBS					= ThorsLogging
 UNITTEST_LINK_LIBS			= ThorsLogging
 UNITTEST_LDLIBS				= -ldl
 FILE_WARNING_FLAGS			+= -Wno-type-limits
+CONAN_FILE_WARNING_FLAGS	= -Wno-array-bounds -Wno-missing-braces
 
 include $(THORSANVIL_ROOT)/build/tools/Makefile
 
