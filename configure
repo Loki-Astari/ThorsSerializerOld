@@ -696,6 +696,10 @@ ac_ct_CC
 CFLAGS
 CC
 LIBTOOL
+THOR_DISABLE_TEST_WITH_MONGO_QUERY_DISABLE
+THOR_DISABLE_TEST_WITH_LOCKED_FILES_DISABLE
+ZLIB_ROOT_LIB
+ZLIB_ROOT_DIR
 crypto_ROOT_LIB
 crypto_ROOT_DIR
 snappy_ROOT_LIB
@@ -713,6 +717,7 @@ build_os
 build_vendor
 build_cpu
 build
+THOR_CONAN_ENABLE
 UNZIP
 CXX_STD_FLAG
 CXXSTDVER
@@ -797,12 +802,14 @@ enable_vera
 enable_colour
 enable_dark_mode
 with_standard_version
+enable_test_with_conan
 with_boost
 with_boost_libdir
 with_magicenum_header_only_root
 with_yaml_root
 with_snappy_root
 with_crypto_root
+with_zlib_root
 enable_test_with_locked_file
 enable_test_with_mongo_query
 enable_Mongo_Service
@@ -1469,13 +1476,14 @@ Optional Features:
   --enable-dark-mode      If your background is black some text that was grey
                           is turned yellow
 
+  --enable-test-with-conan
+                          Set the Makefile variable "THOR_ENABLE_CONAN". This
+                          is used by the standard Makefiles to add.
+
   --disable-test-with-locked-file
                           Windows does not provide the same locking
                           capabilities as Linux. Thus during testing when we
-                          try and lock files, it does not work, so that an
-                          attempt to open them would fail. Unfortunately we
-                          can't lock the files and thus the test pass. Don't
-                          run these tests on Windows.
+                          try and lock files
 
   --disable-test-with-mongo-query
                           There are three versions of the mongo wire protocol.
@@ -1526,6 +1534,9 @@ Optional Packages:
 
   --with-crypto-root=<location>
                           Define the root directory of package CRYPTO
+
+  --with-zlib-root=<location>
+                          Define the root directory of package ZLIB
 
   --with-TestMongoHost=<Host>
                           Use an alternative mongosh host for testing with
@@ -4792,6 +4803,38 @@ test -n "$UNZIP" || UNZIP=":"
 
 
 
+    # Check whether --enable-test-with-conan was given.
+if test ${enable_test_with_conan+y}
+then :
+  enableval=$enable_test_with_conan;
+fi
+
+
+    if test "x${enable_test_with_conan}" == "xyes"
+then :
+
+
+printf "%s\n" "#define THOR_CONAN 1" >>confdefs.h
+
+            THOR_CONAN_ENABLE=CONAN
+
+            subconfigure="${subconfigure} --enable-test-with-conan";
+
+else case e in #(
+  e)
+
+printf "%s\n" "#define THOR_CONAN 0" >>confdefs.h
+
+
+
+     ;;
+esac
+fi
+
+
+
+
+
 
 
   # Make sure we can run config.sub.
@@ -5741,6 +5784,144 @@ fi
 
 
 
+# Check whether --with-zlib-root was given.
+if test ${with_zlib_root+y}
+then :
+  withval=$with_zlib_root;
+fi
+
+
+    LIBRARY_DIR="-L ${with_zlib_root}/lib"
+    if test "x${with_zlib_root}" == "x"
+then :
+  LIBRARY_DIR="-L ${DefaultLinkDir}/lib"
+
+fi
+
+    if test "x${zlib_header_only_defined}" == "x"
+then :
+
+            ORIG_LDFLAGS="${LDFLAGS}"
+            LDFLAGS="$LDFLAGS ${LIBRARY_DIR}"
+
+            echo "Building: NotThor"
+            echo "Mark:     $BUILDING_NotThor"
+            echo "Checking"
+            if test "x$BUILDING_NotThor" == "x1"
+then :
+
+
+    if test "x${with_zlib_root}" != "x"
+then :
+
+
+printf "%s\n" "#define HAVE_ZLIB 1" >>confdefs.h
+
+            ZLIB_ROOT_DIR=${with_zlib_root}
+
+            subconfigure="${subconfigure} --with-zlib-root=${with_zlib_root}"
+
+
+fi
+    echo "Setting: ZLIB_ROOT_LIB TO z"
+    ZLIB_ROOT_LIB="z"
+
+
+
+else case e in #(
+  e)
+                    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for uncompress in -lz" >&5
+printf %s "checking for uncompress in -lz... " >&6; }
+if test ${ac_cv_lib_z_uncompress+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) ac_check_lib_save_LIBS=$LIBS
+LIBS="-lz  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+namespace conftest {
+  extern "C" int uncompress ();
+}
+int
+main (void)
+{
+return conftest::uncompress ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  ac_cv_lib_z_uncompress=yes
+else case e in #(
+  e) ac_cv_lib_z_uncompress=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_z_uncompress" >&5
+printf "%s\n" "$ac_cv_lib_z_uncompress" >&6; }
+if test "x$ac_cv_lib_z_uncompress" = xyes
+then :
+
+
+    if test "x${with_zlib_root}" != "x"
+then :
+
+
+printf "%s\n" "#define HAVE_ZLIB 1" >>confdefs.h
+
+            ZLIB_ROOT_DIR=${with_zlib_root}
+
+            subconfigure="${subconfigure} --with-zlib-root=${with_zlib_root}"
+
+
+fi
+    echo "Setting: ZLIB_ROOT_LIB TO z"
+    ZLIB_ROOT_LIB="z"
+
+
+
+else case e in #(
+  e)
+                            echo "FAIL: Using: >${with_zlib_root}<"
+                            as_fn_error $? "
+
+Error: Could not find libz
+
+            brew install libz
+            ./configure --with-zlib-root=/usr/local/Cellar/libz/1.0.2j/
+
+
+
+
+    " "$LINENO" 5
+                            echo "FAIL DONE"
+
+                     ;;
+esac
+fi
+
+
+             ;;
+esac
+fi
+            echo "Checking DONE"
+
+            LDFLAGS="${ORIG_LDFLAGS}"
+
+
+fi
+
+
+
+
+
     # Check whether --enable-test-with-locked-file was given.
 if test ${enable_test_with_locked_file+y}
 then :
@@ -5754,6 +5935,8 @@ then :
 
 printf "%s\n" "#define THOR_DISABLE_TEST_WITH_LOCKED_FILES 1" >>confdefs.h
 
+            THOR_DISABLE_TEST_WITH_LOCKED_FILES_DISABLE=LOCKED_FILES
+
             subconfigure="${subconfigure} --disable-test-with-locked-file";
 
 else case e in #(
@@ -5762,9 +5945,11 @@ else case e in #(
 printf "%s\n" "#define THOR_DISABLE_TEST_WITH_LOCKED_FILES 0" >>confdefs.h
 
 
+
      ;;
 esac
 fi
+
 
 
 
@@ -5782,6 +5967,8 @@ then :
 
 printf "%s\n" "#define THOR_DISABLE_TEST_WITH_MONGO_QUERY 1" >>confdefs.h
 
+            THOR_DISABLE_TEST_WITH_MONGO_QUERY_DISABLE=MONGO
+
             subconfigure="${subconfigure} --disable-test-with-mongo-query";
 
 else case e in #(
@@ -5790,9 +5977,11 @@ else case e in #(
 printf "%s\n" "#define THOR_DISABLE_TEST_WITH_MONGO_QUERY 0" >>confdefs.h
 
 
+
      ;;
 esac
 fi
+
 
 
 
