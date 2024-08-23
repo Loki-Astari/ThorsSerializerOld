@@ -19,7 +19,7 @@ This code is the basis for [ThorsMongo](https://github.com/Loki-Astari/ThorsMong
 
 ## Benchmark Results
 Conformance [mac](https://LokiAstari.com/Json/Conformance.osx.html) [linux](https://LokiAstari.com/Json/Conformance.linux.html)  
-Performance [max](https://LokiAstari.com/Json/Performance.osx.html) [linux](https://LokiAstari.com/Json/Performance.linux.html)  
+Performance [mac](https://LokiAstari.com/Json/Performance.osx.html) [linux](https://LokiAstari.com/Json/Performance.linux.html)  
 For details see: [JsonBenchmark](https://github.com/Loki-Astari/JsonBenchmark)  
 
 [## Documentation](doc/api.md)
