@@ -380,12 +380,14 @@ Inside the class add the macro `ThorsAnvil_PolyMorphicSerializer`. This adds som
     };
     struct Car
     {
-        ThorsAnvil_PolyMorphicSerializer(Car);
+        // Note: the 'WithOverride' just adds 'override' to any functions to prevent warnings.
+        //       You should use it with all by the base class.
+        ThorsAnvil_PolyMorphicSerializerWithOverride(Car);
         Engine      engineInfo;
     };
     struct Bike
     {
-        ThorsAnvil_PolyMorphicSerializer(Bike);
+        ThorsAnvil_PolyMorphicSerializerWithOverride(Bike);
         bool        electric;
     };
     struct PersonTransport
