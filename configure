@@ -3659,6 +3659,7 @@ fi
     if test "x$enable_coverage" != "xno"
 then :
 
+        subconfigure="${subconfigure} --disable-coverage"
 echo "STARTING COVERAGE CHECK"
         if test "x${COV}x" = "xx"
 then :
