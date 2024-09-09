@@ -3,6 +3,7 @@
 
 #include "SerializeConfig.h"
 #include "Serialize.h"
+#include "ThorsSerializerUtil.h"
 #include "ThorsIOUtil/Utility.h"
 #include "ThorsLogging/ThorsLogging.h"
 #include <istream>
@@ -12,13 +13,13 @@ namespace ThorsAnvil::Serialize
 
 class JsonManualLexer
 {
-    std::istream&       str;
+    ParserInterface&    parser;
     std::string         buffer;
     int                 lastToken;
     bool                lastBool;
     bool                lastNull;
     public:
-        JsonManualLexer(std::istream& str);
+        JsonManualLexer(ParserInterface& parser);
         int yylex();
 
         void        ignoreRawValue();
