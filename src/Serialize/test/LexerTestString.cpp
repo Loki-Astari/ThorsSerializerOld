@@ -8,7 +8,7 @@ using ThorsAnvil::Serialize::JsonManualLexer;
 class FakeParser: public ThorsAnvil::Serialize::ParserInterface
 {
     public:
-        FakeParser(std::istream& input)
+        FakeParser(std::string const& input)
             : ParserInterface(input)
         {}
         virtual ThorsAnvil::Serialize::FormatType  formatType()    {return ThorsAnvil::Serialize::FormatType::Json;}
@@ -36,9 +36,9 @@ class FakeParser: public ThorsAnvil::Serialize::ParserInterface
 
         virtual std::string getRawValue()                {return "";}
 };
-TEST(LexerTest, JsonArrayTokens)
+TEST(LexerTestString, JsonArrayTokens)
 {
-    std::stringstream   stream("[],");
+    std::string         stream("[],");
     FakeParser          parser(stream);
     JsonManualLexer     lexer(parser);
 
@@ -46,9 +46,9 @@ TEST(LexerTest, JsonArrayTokens)
     EXPECT_EQ(']',   lexer.yylex());
     EXPECT_EQ(',',   lexer.yylex());
 }
-TEST(LexerTest, JsonMapTokens)
+TEST(LexerTestString, JsonMapTokens)
 {
-    std::stringstream   stream("{}:,");
+    std::string         stream("{}:,");
     FakeParser          parser(stream);
     JsonManualLexer     lexer(parser);
 
@@ -57,9 +57,9 @@ TEST(LexerTest, JsonMapTokens)
     EXPECT_EQ(':',   lexer.yylex());
     EXPECT_EQ(',',   lexer.yylex());
 }
-TEST(LexerTest, JsonValueTokens)
+TEST(LexerTestString, JsonValueTokens)
 {
-    std::stringstream   stream(R"("Test" 456 789.123 true false null)");
+    std::string         stream(R"("Test" 456 789.123 true false null)");
     FakeParser          parser(stream);
     JsonManualLexer     lexer(parser);
 

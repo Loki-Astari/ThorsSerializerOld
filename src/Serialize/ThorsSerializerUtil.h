@@ -15,12 +15,14 @@
 #include <functional>
 #include <optional>
 #include <memory>
+#include <variant>
 
 namespace ThorsAnvil::Serialize
 {
 
         namespace Private
         {
+
 
 inline
 std::string const& getDefaultPolymorphicMarker()
@@ -31,103 +33,113 @@ std::string const& getDefaultPolymorphicMarker()
 }
         }
 
+
+struct StringInput
+{
+    StringInput(std::string_view const& view)
+        : data(view)
+        , position(0)
+        , lastRead(0)
+    {}
+    std::string_view    data;
+    std::size_t         position;
+    std::size_t         lastRead;
+
+    long readInteger()
+    {
+        char* end;
+        char const* start = &data[position];
+        long result = std::strtol(start, &end, 10);
+        lastRead = (end - start);
+        position += lastRead;
+        return result;
+    }
+    long long readLongInteger()
+    {
+        char* end;
+        char const* start = &data[position];
+        long long result = std::strtoll(start, &end, 10);
+        lastRead = (end - start);
+        position += lastRead;
+        return result;
+    }
+    unsigned long readUInteger()
+    {
+        char* end;
+        char const* start = &data[position];
+        unsigned long result = std::strtoul(start, &end, 10);
+        lastRead = (end - start);
+        position += lastRead;
+        return result;
+    }
+    unsigned long long readULongInteger()
+    {
+        char* end;
+        char const* start = &data[position];
+        unsigned long long result = std::strtoull(start, &end, 10);
+        lastRead = (end - start);
+        position += lastRead;
+        return result;
+    }
+    double readDouble()
+    {
+        char* end;
+        char const* start = &data[position];
+        double result = std::strtod(start, &end);
+        lastRead = (end - start);
+        position += lastRead;
+        return result;
+    }
+    long double readLongDouble()
+    {
+        char* end;
+        char const* start = &data[position];
+        long double result = std::strtold(start, &end);
+        lastRead = (end - start);
+        position += lastRead;
+        return result;
+    }
+    void readValue(char& value)
+    {
+        while (std::isspace(data[position])) {
+            ++position;
+        }
+        value = data[position++];
+    }
+    void readValue(short int& value)                {value = readInteger();}
+    void readValue(int& value)                      {value = readInteger();}
+    void readValue(long int& value)                 {value = readInteger();}
+    void readValue(long long int& value)            {value = readLongInteger();}
+
+    void readValue(unsigned short int& value)       {value = readUInteger();}
+    void readValue(unsigned int& value)             {value = readUInteger();}
+    void readValue(unsigned long int& value)        {value = readUInteger();}
+    void readValue(unsigned long long int& value)   {value = readULongInteger();}
+
+    void readValue(float& value)                    {value = readDouble();}
+    void readValue(double& value)                   {value = readDouble();}
+    void readValue(long double& value)              {value = readLongDouble();}
+};
+
+struct StringOutput
+{
+    std::string&    data;
+    bool            ok;
+    public:
+        StringOutput(std::string& output)
+            : data(output)
+            , ok(true)
+        {}
+};
+
+using DataInputStream = std::variant<std::istream*, StringInput>;
+using DataOutputStream = std::variant<std::ostream*, StringOutput>;
+
 template<typename T>
 struct SharedInfo
 {
     std::intmax_t       sharedPtrName;
     std::optional<T*>   data;
-};
-
-struct EscapeString
-{
-    std::string_view    value;
-    EscapeString(std::string const& value)
-        : value(value)
-    {}
-    EscapeString(std::string_view const& value)
-        : value(value)
-    {}
-    friend std::ostream& operator<<(std::ostream& stream, EscapeString const& data)
-    {
-        std::string_view const& value = data.value;
-
-        static auto isEscape = [](char c)
-        {
-            return (c >= 0x00 && c <= 0x1f) || c == '"' || c == '\\';
-        };
-
-        auto begin  = std::begin(value);
-        auto end    = std::end(value);
-        auto next = std::find_if(begin, end, isEscape);
-        if (next == end)
-        {
-            stream << value;
-        }
-        else
-        {
-            while (next != end)
-            {
-                stream << std::string(begin, next);
-                if (*next == '"')
-                {
-                    stream << R"(\")";
-                    ++next;
-                }
-                else if (*next == '\\')
-                {
-                    stream << R"(\\)";
-                    ++next;
-                }
-                else if (*next == 0x08)
-                {
-                    stream << R"(\b)";
-                    ++next;
-                }
-                else if (*next == 0x0C)
-                {
-                    stream << R"(\f)";
-                    ++next;
-                }
-                else if (*next == 0x0A)
-                {
-                    stream << R"(\n)";
-                    ++next;
-                }
-                else if (*next == 0x0D)
-                {
-                    stream << R"(\r)";
-                    ++next;
-                }
-                else if (*next == 0x09)
-                {
-                    stream << R"(\t)";
-                    ++next;
-                }
-                else
-                {
-                    stream << R"(\u)"
-                           << std::setw(4)
-                           << std::setfill('0')
-                           << std::hex
-                           << static_cast<unsigned int>(static_cast<unsigned char>(*next))
-                           << std::dec;
-                    ++next;
-                }
-                /*
-                else
-                {
-                    110xxxxx
-
-                    stream << R("\u") << std::setw(4) << std::setfill('0') << std::hex << codepoint;
-                }
-                */
-                begin = next;
-                next = std::find_if(begin, end, isEscape);
-            }
-            stream << std::string(begin, end);
-        }
-        return stream;
-    }
 };
 
 /*
@@ -254,14 +266,17 @@ struct ParserConfig
 class ParserInterface
 {
     public:
-        std::istream&   input;
-        ParserToken     pushBack;
-        ParserConfig    config;
+        ParserConfig const config;
 
-        ParserInterface(std::istream& input, ParserConfig  config = ParserConfig{})
-            : input(input)
+        ParserInterface(std::string_view const& str, ParserConfig  config = ParserConfig{})
+            : config(config)
+            , input(str)
             , pushBack(ParserToken::Error)
-            , config(config)
+        {}
+        ParserInterface(std::istream& stream, ParserConfig  config = ParserConfig{})
+            : config(config)
+            , input(&stream)
+            , pushBack(ParserToken::Error)
         {}
         virtual ~ParserInterface() {}
         virtual FormatType formatType()                 = 0;
@@ -298,7 +313,137 @@ class ParserInterface
 
         void    ignoreValue();
 
-        std::istream& stream() {return input;}
+        //std::istream& stream() {return input;}
+
+        bool            read(char* dst, std::size_t size)
+        {
+            struct Read
+            {
+                char*       dst;
+                std::size_t size;
+                Read(char* dst, std::size_t size):dst(dst),size(size){}
+                bool operator()(std::istream* input)    {return static_cast<bool>(input->read(dst, size));}
+                bool operator()(StringInput& input)
+                {
+                    std::size_t copySize = std::min(size, input.data.size() - input.position);
+                    std::copy(&input.data[input.position], &input.data[input.position + copySize], dst);
+                    input.position += copySize;
+                    input.lastRead = copySize;
+                    return input.position <= input.data.size();
+                }
+            };
+            return std::visit(Read{dst, size}, input);
+        }
+        bool            readTo(std::string& dst, char delim)
+        {
+            struct ReadTo
+            {
+                std::string&    dst;
+                char            delim;
+                ReadTo(std::string& dst, char delim):dst(dst),delim(delim){}
+                bool operator()(std::istream* input)    {return static_cast<bool>(std::getline((*input), dst, delim));}
+                bool operator()(StringInput& input)
+                {
+                    auto find = input.data.find(delim, input.position);
+                    if (find == std::string::npos)
+                    {
+                        find = input.data.size();
+                    }
+                    auto size = find - input.position;
+                    dst.resize(size);
+                    std::copy(&input.data[input.position], &input.data[input.position + size], &dst[0]);
+                    input.position += (size + 1);
+                    return input.position <= input.data.size();
+                }
+            };
+            return std::visit(ReadTo(dst, delim), input);
+        }
+        std::size_t     lastReadCount() const
+        {
+            struct LastReadCount
+            {
+                std::size_t operator()(std::istream const* input)    {return input->gcount();}
+                std::size_t operator()(StringInput const& input)     {return input.lastRead;}
+            };
+            return std::visit(LastReadCount{}, input);
+        }
+        std::streampos  getPos()
+        {
+            struct GetPos
+            {
+                std::streampos operator()(std::istream* input)    {return input->tellg();}
+                std::streampos operator()(StringInput& input)     {return input.position;}
+            };
+            return std::visit(GetPos{}, input);
+        }
+        int             get()
+        {
+            struct Get
+            {
+                int operator()(std::istream* input)    {return input->get();}
+                int operator()(StringInput& input)     {return input.data[input.position++];}
+            };
+            return std::visit(Get{}, input);
+        }
+        void            ignore(std::size_t size)
+        {
+            struct Ignore
+            {
+                std::size_t size;
+                Ignore(std::size_t size): size(size) {}
+                void operator()(std::istream* input)    {input->ignore(size);}
+                void operator()(StringInput& input)     {input.position += size;}
+            };
+            std::visit(Ignore{size}, input);
+        }
+        void            clear()
+        {
+            struct Clear
+            {
+                void operator()(std::istream* input)    {input->clear();}
+                void operator()(StringInput& input)     {input.position = 0;}
+            };
+            std::visit(Clear{}, input);
+        }
+        void            unget()
+        {
+            struct Unget
+            {
+                void operator()(std::istream* input)    {input->unget();}
+                void operator()(StringInput& input)     {--input.position;}
+            };
+            std::visit(Unget{}, input);
+        }
+        bool            ok() const
+        {
+            struct OK
+            {
+                bool operator()(std::istream const* input)    {return !input->fail();}
+                bool operator()(StringInput const& input)     {return input.position <= input.data.size();}
+            };
+            return std::visit(OK{}, input);
+        }
+        void setFail()
+        {
+            struct SetFail
+            {
+                void operator()(std::istream* input)    {input->setstate(std::ios::failbit);}
+                void operator()(StringInput& input)     {input.position = input.data.size() + 1;}
+            };
+            std::visit(SetFail{}, input);
+        }
+        template<typename T>
+        void readValue(T& value)
+        {
+            struct ReadValue
+            {
+                T& value;
+                ReadValue(T& value) :value(value) {}
+                void operator()(std::istream* input)    {(*input) >> value;}
+                void operator()(StringInput& input)     {input.readValue(value);}
+            };
+            std::visit(ReadValue{value}, input);
+        }
 
         template<typename T>
         void getShared(SharedInfo<T> const& info, std::shared_ptr<T>& object)
@@ -315,6 +460,8 @@ class ParserInterface
         }
 
     private:
+        DataInputStream input;
+        ParserToken     pushBack;
         std::map<std::intmax_t, std::any>     savedSharedPtr;
         void    ignoreTheValue();
         void    ignoreTheMap();
@@ -392,12 +539,15 @@ struct PrinterConfig
 class PrinterInterface
 {
     public:
-        std::ostream&   output;
-        PrinterConfig   config;
+        PrinterConfig const  config;
 
         PrinterInterface(std::ostream& output, PrinterConfig config = PrinterConfig{})
-            : output(output)
-            , config(config)
+            : config(config)
+            , output(&output)
+        {}
+        PrinterInterface(std::string& output, PrinterConfig config = PrinterConfig{})
+            : config(config)
+            , output(output)
         {}
         virtual ~PrinterInterface() {}
         virtual FormatType formatType()                 = 0;
@@ -458,7 +608,54 @@ class PrinterInterface
         virtual std::size_t getSizeValue(std::string_view const&)   {return 0;}
         virtual std::size_t getSizeRaw(std::size_t)                 {return 0;}
 
-        std::ostream& stream() {return output;}
+        //std::ostream& stream() {return output;}
+        bool write(char const* src, std::size_t size)
+        {
+            struct Write
+            {
+                char const* src;
+                std::size_t size;
+                Write(char const* src, std::size_t size): src(src), size(size) {}
+
+                bool operator()(std::ostream* output)       {return static_cast<bool>(output->write(src, size));}
+                bool operator()(StringOutput& output)       {output.data += std::string_view(src, size);return true;}
+            };
+            return std::visit(Write{src, size}, output);
+        }
+        bool write(std::string const& src)
+        {
+            return write(src.c_str(), src.size());
+        }
+        bool ok() const
+        {
+            struct OK
+            {
+                bool operator()(std::ostream* output)       {return !output->fail();}
+                bool operator()(StringOutput const& output) {return output.ok;}
+            };
+            return std::visit(OK{}, output);
+        }
+        void setFail()
+        {
+            struct SetFail
+            {
+                void operator()(std::ostream* output)       {output->setstate(std::ios::failbit);}
+                void operator()(StringOutput& output)       {output.ok = false;}
+            };
+            std::visit(SetFail{}, output);
+        }
+        template<typename T>
+        void writeValue(T const& src)
+        {
+            struct WriteValue
+            {
+                T const& src;
+                WriteValue(T const& src): src(src) {}
+                void operator()(std::ostream* output)       {(*output) << src;}
+                void operator()(StringOutput& output)       {using std::to_string; output.data += to_string(src);}
+            };
+            std::visit(WriteValue{src}, output);
+        }
 
         template<typename T>
         SharedInfo<T> addShared(std::shared_ptr<T> const& shared)
@@ -477,6 +674,7 @@ class PrinterInterface
             return result;
         }
     private:
+        DataOutputStream   output;
         std::map<std::intmax_t, void const*>     savedSharedPtr;
 };
 
@@ -737,6 +935,89 @@ auto tryGetSizeFromSerializeType(PrinterInterface&, T const&, long) -> std::size
     // Which will make the code more stable.
     //
     // Please look at test/ExceptionTest.h for a simple example.
+}
+
+inline void escapeString(PrinterInterface& printer, std::string const& value)
+{
+    using namespace std::string_literals;
+
+    static auto isEscape = [](char c)
+    {
+        return (c >= 0x00 && c <= 0x1f) || c == '"' || c == '\\';
+    };
+
+    auto begin  = std::begin(value);
+    auto end    = std::end(value);
+    auto next = std::find_if(begin, end, isEscape);
+    if (next == end)
+    {
+        printer.write(value);
+    }
+    else
+    {
+        while (next != end)
+        {
+            printer.write(&*begin, (next - begin));
+            if (*next == '"')
+            {
+                printer.write(R"(\")"s);
+                ++next;
+            }
+            else if (*next == '\\')
+            {
+                printer.write(R"(\\)"s);
+                ++next;
+            }
+            else if (*next == 0x08)
+            {
+                printer.write(R"(\b)"s);
+                ++next;
+            }
+            else if (*next == 0x0C)
+            {
+                printer.write(R"(\f)"s);
+                ++next;
+            }
+            else if (*next == 0x0A)
+            {
+                printer.write(R"(\n)"s);
+                ++next;
+            }
+            else if (*next == 0x0D)
+            {
+                printer.write(R"(\r)"s);
+                ++next;
+            }
+            else if (*next == 0x09)
+            {
+                printer.write(R"(\t)"s);
+                ++next;
+            }
+            else
+            {
+                std::stringstream ss;
+                ss     << R"(\u)"
+                       << std::setw(4)
+                       << std::setfill('0')
+                       << std::hex
+                       << static_cast<unsigned int>(static_cast<unsigned char>(*next))
+                       << std::dec;
+                printer.write(ss.str());
+                ++next;
+            }
+            /*
+            else
+            {
+                110xxxxx
+
+                stream << R("\u") << std::setw(4) << std::setfill('0') << std::hex << codepoint;
+            }
+            */
+            begin = next;
+            next = std::find_if(begin, end, isEscape);
+        }
+        printer.write(&*begin, (end - begin));
+    }
 }
 
 

@@ -5,7 +5,10 @@
 #include <sstream>
 #include <cctype>
 
-TEST(BankAccountTest, JsonExportCustomField)
+ThorsAnvil_RegisterPolyMorphicType(OnLineBank::CurrentAccount);
+ThorsAnvil_RegisterPolyMorphicType(OnLineBank::DepositAccount);
+
+TEST(BankAccountTestString, JsonExportCustomField)
 {
     bool    serializeOK     = false;
     bool    deserializeOK   = false;
@@ -15,7 +18,7 @@ TEST(BankAccountTest, JsonExportCustomField)
     src.addTransaction(1, 32, OnLineBank::Deposit);
     src.addTransaction(2, 12, OnLineBank::Withdraw);
 
-    std::stringstream stream;
+    std::string     stream;
     if (stream << ThorsAnvil::Serialize::jsonExporter(src))
     {
         serializeOK = true;
@@ -35,7 +38,7 @@ TEST(BankAccountTest, JsonExportCustomField)
     EXPECT_TRUE(dst.isValid());
 }
 
-TEST(BankAccountTest, BsonExportCustomField)
+TEST(BankAccountTestString, BsonExportCustomField)
 {
     bool    serializeOK     = false;
     bool    deserializeOK   = false;
@@ -45,7 +48,7 @@ TEST(BankAccountTest, BsonExportCustomField)
     src.addTransaction(1, 32, OnLineBank::Deposit);
     src.addTransaction(2, 12, OnLineBank::Withdraw);
 
-    std::stringstream stream;
+    std::string     stream;
     if (stream << ThorsAnvil::Serialize::bsonExporter(src))
     {
         serializeOK = true;
