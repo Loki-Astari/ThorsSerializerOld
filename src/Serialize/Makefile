@@ -15,5 +15,7 @@ CONAN_FILE_WARNING_FLAGS	= -Wno-array-bounds -Wno-missing-braces
 
 include $(THORSANVIL_ROOT)/build/tools/Makefile
 
-%/DeprecatedTest.o:			FILE_WARNING_FLAGS += -Wno-deprecated-declarations
+%/DeprecatedTest.o:						FILE_WARNING_FLAGS += -Wno-deprecated-declarations
+%/ExceptionWhilePrintingTest.o:			FILE_WARNING_FLAGS += -Wno-deprecated-declarations
+%/ExceptionWhilePrintingTestString.o:	FILE_WARNING_FLAGS += -Wno-deprecated-declarations
 
