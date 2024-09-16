@@ -97,7 +97,7 @@ struct StringInput
 
             auto start = &data[position];
             auto result = from_chars(start, &data[0] + data.size(), value);
-            if (result.ec != std::errc::invalid_argument)
+            if (result.ec != std::errc::invalid_argument) [[likely]]
             {
                 lastRead = (result.ptr - start);
                 position+= lastRead;

@@ -58,7 +58,8 @@ inline T JsonManualLexer::scan()
     T           value;
     bool readOK = parser.readValue(value);
     int peek = parser.peek();
-    if (!readOK || posBefore == parser.getPos() || peek == '.' || peek == 'e' || peek == 'E')
+
+    if (!readOK || posBefore == parser.getPos() || peek == '.' || peek == 'e' || peek == 'E') [[unlikely]]
     {
         ThorsLogAndThrow("ThorsAnvil::Serialize::JsonManualLexer",
                          "scan",
