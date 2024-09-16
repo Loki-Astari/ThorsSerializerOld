@@ -79,7 +79,7 @@ struct StringVsStringView
         return lhs < rhs;
     }
 };
-using   KeyStore = std::set<std::string, StringVsStringView>;
+using KeyStore = std::set<std::string, StringVsStringView>;
 
 template<typename T>
 struct HeedAllValues;
