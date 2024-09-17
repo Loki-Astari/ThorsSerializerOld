@@ -17,6 +17,174 @@
 
 namespace ThorsAnvil::Serialize
 {
+class StreamInputInterface
+{
+    public:
+        virtual ~StreamInputInterface() {}
+        virtual bool            read(char* dst, std::size_t size)       = 0;
+        virtual bool            readTo(std::string& dst, char delim)    = 0;
+        virtual std::size_t     lastReadCount() const                   = 0;
+        virtual std::streampos  getPos()                                = 0;
+        virtual int             get()                                   = 0;
+        virtual int             peek()                                  = 0;
+        virtual void            ignore(std::size_t size)                = 0;
+        virtual void            clear()                                 = 0;
+        virtual void            unget()                                 = 0;
+        virtual bool            ok() const                              = 0;
+        virtual void            setFail()                               = 0;
+
+        virtual bool            readValue(short int&)                   = 0;
+        virtual bool            readValue(int&)                         = 0;
+        virtual bool            readValue(long int&)                    = 0;
+        virtual bool            readValue(long long int&)               = 0;
+
+        virtual bool            readValue(unsigned short int&)          = 0;
+        virtual bool            readValue(unsigned int&)                = 0;
+        virtual bool            readValue(unsigned long int&)           = 0;
+        virtual bool            readValue(unsigned long long int&)      = 0;
+
+        virtual bool            readValue(float&)                       = 0;
+        virtual bool            readValue(double&)                      = 0;
+        virtual bool            readValue(long double&)                 = 0;
+
+        virtual bool            readValue(char& value)                  = 0;
+        virtual int             peekNextNonSpaceValue()                 = 0;
+};
+class StreamInputInterfaceStdStream: public StreamInputInterface
+{
+    std::istream&   input;
+    public:
+        StreamInputInterfaceStdStream(std::istream& input)
+            : input(input)
+        {}
+        virtual bool            read(char* dst, std::size_t size)       override {return static_cast<bool>(input.read(dst, size));}
+        virtual bool            readTo(std::string& dst, char delim)    override {return static_cast<bool>(std::getline(input, dst, delim));}
+        virtual std::size_t     lastReadCount() const                   override {return input.gcount();}
+        virtual std::streampos  getPos()                                override {return input.tellg();}
+        virtual int             get()                                   override {return input.get();}
+        virtual int             peek()                                  override {return input.peek();}
+        virtual void            ignore(std::size_t size)                override {input.ignore(size);}
+        virtual void            clear()                                 override {input.clear();}
+        virtual void            unget()                                 override {input.unget();}
+        virtual bool            ok() const                              override {return !input.fail();}
+        virtual void            setFail()                               override {input.setstate(std::ios::failbit);}
+
+        template<typename T>
+        bool readInteger(T& value)
+        {
+            bool ok = static_cast<bool>(input >> value);
+            char next = input.peek();
+            return ok && next != '.' && next != 'e' && next != 'E';
+        }
+
+        virtual bool            readValue(short int& value)             override {return readInteger(value);}
+        virtual bool            readValue(int& value)                   override {return readInteger(value);}
+        virtual bool            readValue(long int& value)              override {return readInteger(value);}
+        virtual bool            readValue(long long int& value)         override {return readInteger(value);}
+
+        virtual bool            readValue(unsigned short int& value)    override {return readInteger(value);}
+        virtual bool            readValue(unsigned int& value)          override {return readInteger(value);}
+        virtual bool            readValue(unsigned long int& value)     override {return readInteger(value);}
+        virtual bool            readValue(unsigned long long int& value)override {return readInteger(value);}
+
+        template<typename T>
+        bool readFloat(T& value)
+        {
+            return static_cast<bool>(input >> value);
+        }
+
+        virtual bool            readValue(float& value)                 override {return readFloat(value);}
+        virtual bool            readValue(double& value)                override {return readFloat(value);}
+        virtual bool            readValue(long double& value)           override {return readFloat(value);}
+
+        virtual bool            readValue(char& value)                  override {return static_cast<bool>(input >> value);}
+        virtual int             peekNextNonSpaceValue()                 override
+        {
+            char value;
+            bool ok = static_cast<bool>(input >> value);
+            switch (value)
+            {
+                case '{':
+                case '}':
+                case '[':
+                case ']':
+                case ',':
+                case ':':
+                    break;
+                default:
+                    input.unget();
+            }
+            return ok ? value : -1;
+        }
+};
+class StreamInputInterfaceString: public StreamInputInterface
+{
+    StringInput   input;
+    public:
+        StreamInputInterfaceString(std::string_view const& input)
+            : input(input)
+        {}
+        virtual bool            read(char* dst, std::size_t size)       override {return input.read(dst, size);}
+        virtual bool            readTo(std::string& dst, char delim)    override {return input.readTo(dst, delim);}
+        virtual std::size_t     lastReadCount() const                   override {return input.getLastReadCount();}
+        virtual std::streampos  getPos()                                override {return input.getPos();}
+        virtual int             get()                                   override {return input.get();}
+        virtual int             peek()                                  override {return input.peek();}
+        virtual void            ignore(std::size_t size)                override {input.ignore(size);}
+        virtual void            clear()                                 override {input.clear();}
+        virtual void            unget()                                 override {input.unget();}
+        virtual bool            ok() const                              override {return input.isOk();}
+        virtual void            setFail()                               override {input.setFail();}
+
+        virtual bool            readValue(short int& value)             override {return readInteger(value);}
+        virtual bool            readValue(int& value)                   override {return readInteger(value);}
+        virtual bool            readValue(long int& value)              override {return readInteger(value);}
+        virtual bool            readValue(long long int& value)         override {return readInteger(value);}
+
+        virtual bool            readValue(unsigned short int& value)    override {return readInteger(value);}
+        virtual bool            readValue(unsigned int& value)          override {return readInteger(value);}
+        virtual bool            readValue(unsigned long int& value)     override {return readInteger(value);}
+        virtual bool            readValue(unsigned long long int& value)override {return readInteger(value);}
+
+        template<typename T>
+        bool readInteger(T& value)
+        {
+            bool ok = input.readValue(value);
+            char next = input.peek();
+            return ok && next != '.' && next != 'e' && next != 'E';
+        }
+
+        virtual bool            readValue(float& value)                 override {return readFloat(value);}
+        virtual bool            readValue(double& value)                override {return readFloat(value);}
+        virtual bool            readValue(long double& value)           override {return readFloat(value);}
+
+        template<typename T>
+        bool readFloat(T& value)
+        {
+            return input.readValue(value);
+        }
+
+        virtual bool            readValue(char& value)                  override {return input.readValue(value);}
+        virtual int             peekNextNonSpaceValue()                 override
+        {
+            char value;
+            input.readValue(value);
+            switch (value)
+            {
+                case '{':
+                case '}':
+                case '[':
+                case ']':
+                case ',':
+                case ':':
+                    break;
+                default:
+                    input.unget();
+            }
+            return input.isOk() ? value : -1;
+        }
+};
+
 
 class ParserInterface
 {
@@ -25,12 +193,12 @@ class ParserInterface
 
         ParserInterface(std::string_view const& str, ParserConfig  config = ParserConfig{})
             : config(config)
-            , input(str)
+            , input(std::make_unique<StreamInputInterfaceString>(str))
             , pushBack(ParserToken::Error)
         {}
         ParserInterface(std::istream& stream, ParserConfig  config = ParserConfig{})
             : config(config)
-            , input(&stream)
+            , input(std::make_unique<StreamInputInterfaceStdStream>(stream))
             , pushBack(ParserToken::Error)
         {}
         virtual ~ParserInterface() {}
@@ -68,216 +236,21 @@ class ParserInterface
 
         void    ignoreValue();
 
-        bool            read(char* dst, std::size_t size)
-        {
-            struct Read
-            {
-                char*       dst;
-                std::size_t size;
-                Read(char* dst, std::size_t size):dst(dst),size(size){}
-                bool operator()(std::istream* input)    {return static_cast<bool>(input->read(dst, size));}
-                bool operator()(StringInput& input)     {return input.read(dst, size);}
-            };
-            return std::visit(Read{dst, size}, input);
-        }
-        bool            readTo(std::string& dst, char delim)
-        {
-            struct ReadTo
-            {
-                std::string&    dst;
-                char            delim;
-                ReadTo(std::string& dst, char delim):dst(dst),delim(delim){}
-                bool operator()(std::istream* input)    {return static_cast<bool>(std::getline((*input), dst, delim));}
-                bool operator()(StringInput& input)     {return input.readTo(dst, delim);}
-            };
-            return std::visit(ReadTo(dst, delim), input);
-        }
-        std::size_t     lastReadCount() const
-        {
-            struct LastReadCount
-            {
-                std::size_t operator()(std::istream const* input)    {return input->gcount();}
-                std::size_t operator()(StringInput const& input)     {return input.getLastReadCount();}
-            };
-            return std::visit(LastReadCount{}, input);
-        }
-        std::streampos  getPos()
-        {
-            struct GetPos
-            {
-                std::streampos operator()(std::istream* input)    {return input->tellg();}
-                std::streampos operator()(StringInput& input)     {return input.getPos();}
-            };
-            return std::visit(GetPos{}, input);
-        }
-        int             get()
-        {
-            struct Get
-            {
-                int operator()(std::istream* input)    {return input->get();}
-                int operator()(StringInput& input)     {return input.get();}
-            };
-            return std::visit(Get{}, input);
-        }
-        int             peek()
-        {
-            struct Peek
-            {
-                int operator()(std::istream* input)    {return input->peek();}
-                int operator()(StringInput& input)     {return input.peek();}
-            };
-            return std::visit(Peek{}, input);
-        }
-        void            ignore(std::size_t size)
-        {
-            struct Ignore
-            {
-                std::size_t size;
-                Ignore(std::size_t size): size(size) {}
-                void operator()(std::istream* input)    {input->ignore(size);}
-                void operator()(StringInput& input)     {input.ignore(size);}
-            };
-            std::visit(Ignore{size}, input);
-        }
-        void            clear()
-        {
-            struct Clear
-            {
-                void operator()(std::istream* input)    {input->clear();}
-                void operator()(StringInput& input)     {input.clear();}
-            };
-            std::visit(Clear{}, input);
-        }
-        void            unget()
-        {
-            struct Unget
-            {
-                void operator()(std::istream* input)    {input->unget();}
-                void operator()(StringInput& input)     {input.unget();}
-            };
-            std::visit(Unget{}, input);
-        }
-        bool            ok() const
-        {
-            struct OK
-            {
-                bool operator()(std::istream const* input)    {return !input->fail();}
-                bool operator()(StringInput const& input)     {return input.isOk();}
-            };
-            return std::visit(OK{}, input);
-        }
-        void setFail()
-        {
-            struct SetFail
-            {
-                void operator()(std::istream* input)    {input->setstate(std::ios::failbit);}
-                void operator()(StringInput& input)     {input.setFail();}
-            };
-            std::visit(SetFail{}, input);
-        }
+        bool            read(char* dst, std::size_t size)       {return input->read(dst, size);}
+        bool            readTo(std::string& dst, char delim)    {return input->readTo(dst, delim);}
+        std::size_t     lastReadCount() const                   {return input->lastReadCount();}
+        std::streampos  getPos()                                {return input->getPos();}
+        int             get()                                   {return input->get();}
+        int             peek()                                  {return input->peek();}
+        void            ignore(std::size_t size)                {return input->ignore(size);}
+        void            clear()                                 {return input->clear();}
+        void            unget()                                 {return input->unget();}
+        bool            ok() const                              {return input->ok();}
+        void            setFail()                               {return input->setFail();}
         template<typename T>
-        requires std::integral<T>
-        bool readValue(T& value)
-        {
-            struct ReadValue
-            {
-                T& value;
-                ReadValue(T& value) :value(value) {}
-                bool operator()(std::istream* input)
-                {
-                    bool ok = static_cast<bool>((*input) >> value);
-                    char next = input->peek();
-                    return ok && next != '.' && next != 'e' && next != 'E';
-                }
-                bool operator()(StringInput& input)
-                {
-                    bool ok = input.readValue(value);
-                    char next = input.peek();
-                    return ok && next != '.' && next != 'e' && next != 'E';
-                }
-            };
-            return std::visit(ReadValue{value}, input);
-        }
-        template<typename T>
-        requires std::floating_point<T>
-        bool readValue(T& value)
-        {
-            struct ReadValue
-            {
-                T& value;
-                ReadValue(T& value) :value(value) {}
-                bool operator()(std::istream* input)
-                {
-                    return static_cast<bool>((*input) >> value);
-                }
-                bool operator()(StringInput& input)
-                {
-                    return input.readValue(value);
-                }
-            };
-            return std::visit(ReadValue{value}, input);
-        }
-        bool readValue(char& value)
-        {
-            struct ReadValue
-            {
-                char& value;
-                ReadValue(char& value) :value(value) {}
-                bool operator()(std::istream* input)
-                {
-                    return static_cast<bool>((*input) >> value);
-                }
-                bool operator()(StringInput& input)
-                {
-                    return input.readValue(value);
-                }
-            };
-            return std::visit(ReadValue{value}, input);
-        }
+        bool            readValue(T& value)                     {return input->readValue(value);}
+        int             peekNextNonSpaceValue()                 {return input->peekNextNonSpaceValue();}
 
-        int peekNextNonSpaceValue()
-        {
-            struct PeekNextNonSpaceValue
-            {
-                int operator()(std::istream* input)
-                {
-                    char value;
-                    bool ok = static_cast<bool>((*input) >> value);
-                    switch (value)
-                    {
-                        case '{':
-                        case '}':
-                        case '[':
-                        case ']':
-                        case ',':
-                        case ':':
-                            break;
-                        default:
-                            input->unget();
-                    }
-                    return ok ? value : -1;
-                }
-                int operator()(StringInput& input)
-                {
-                    char value;
-                    input.readValue(value);
-                    switch (value)
-                    {
-                        case '{':
-                        case '}':
-                        case '[':
-                        case ']':
-                        case ',':
-                        case ':':
-                            break;
-                        default:
-                            input.unget();
-                    }
-                    return input.isOk() ? value : -1;
-                }
-            };
-            return std::visit(PeekNextNonSpaceValue{}, input);
-        }
         template<typename T>
         void getShared(SharedInfo<T> const& info, std::shared_ptr<T>& object)
         {
@@ -293,9 +266,10 @@ class ParserInterface
         }
 
     private:
-        using DataInputStream = std::variant<std::istream*, StringInput>;
+        //using DataInputStream = std::variant<std::istream*, StringInput>;
+        //DataInputStream input;
+        std::unique_ptr<StreamInputInterface>   input;
 
-        DataInputStream input;
         ParserToken     pushBack;
         std::map<std::intmax_t, std::any>     savedSharedPtr;
         void    ignoreTheValue();
