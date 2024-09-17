@@ -54,12 +54,10 @@ class Unicode
 template<typename T>
 inline T JsonManualLexer::scan()
 {
-    std::streampos posBefore = parser.getPos();
     T           value;
     bool readOK = parser.readValue(value);
-    int peek = parser.peek();
 
-    if (!readOK || posBefore == parser.getPos() || peek == '.' || peek == 'e' || peek == 'E') [[unlikely]]
+    if (!readOK) [[unlikely]]
     {
         ThorsLogAndThrow("ThorsAnvil::Serialize::JsonManualLexer",
                          "scan",
